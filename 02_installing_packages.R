@@ -1,3 +1,4 @@
+# from pietrozoffoli
 # installing new packages in R
 
 install.packages("terra") # without further instructions, it will look for the package in the CRAN repo by default. If the needed package comes from a different source then there are a few more steps to take
