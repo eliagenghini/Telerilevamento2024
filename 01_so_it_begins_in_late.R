@@ -1,6 +1,6 @@
 # First R script (thankyou pietrozoffoli for the help)
 
-# R as a calculation tool (<- means create an object)
+# R as a calculation tool ("<-"=create an object)
 a<-6^3
 b<-5*8
 a+b
