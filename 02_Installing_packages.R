@@ -13,7 +13,7 @@ library(devtools)
 # install the imageRy package from GitHub
 
 devtools::install_github("ducciorocchini/imageRy") 
-# the syntax :: means that the argument to the right is a function of the package to the left. It can  be omitted, it's to make others understand what you are doing
+# the syntax :: means that the argument to the right is a function of the package to the left. It can be omitted, it's to make others understand what you are doing
 # this is a devtools function
 
 library(imageRy) #package containing functions for remote sensing
