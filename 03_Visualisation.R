@@ -1,40 +1,50 @@
-# Satellite data visualisation in R by imageRy
-# https://sentinels.copernicus.eu/web/sentinel/user-guides/sentinel-2-msi/resolutions/spatial
+# satellite data visualisation in R by imageRy
 
 library(terra)
-library(imageRy) 
+library(imageRy)
 
 #All functions begin with ".im"
 
 #List of data available in the package imageRy
 im.list() 
 
-# im.import()  imports data from the list 
-mato <- im.import("matogrosso_ast_2006209_lrg.jpg") # I assigned it to the object 'mato'
-                                                    # Image comes from Earth Observatory by NASA
-                                                    # https://earthobservatory.nasa.gov/ you may use this website to gather images for your project
-                                                    
-# plotting the data
+
+# Importing data from the list
+mato <- im.import("matogrosso_ast_2006209_lrg.jpg") 
+# I assigned it to the object 'mato'
+# Image comes from Earth Observatory by NASA
+# https://earthobservatory.nasa.gov/ you may use this website to gather images for your project
+
+# Plotting the data 1
 plot(mato)
 
-#importing another image to see different bands
-b2 <- im.import("sentinel.dolomites.b2.tif")    # sentinel-2's band 2 corresponds to the wavelength of the colour blue
-                                                # this place is Le Tofane
+# Importing another image to see different bands
+b2 <- im.import("sentinel.dolomites.b2.tif")    
+# Sentinel-2's band 2 (b2) corresponds to the wavelength of the color blue
+# this place is Le Tofane
+# the image shows the variation of reflection of the color blue:
+# Low values = low reflection, high absorption (plants commonly absorb blue)
+# High values = high reflection, low absorption (rocks reflect blue, and in general all the bands)
 
-# changing colour palette
+color
+# Plotting the data 2
+
+# changing color palette
+clg <- colorRampPalette(c("black", "grey", "white"))(3)
 clg <- colorRampPalette(c("black", "grey", "white"))(100) # the number outside the main argument defines how many shades will be shown
-plot(b2, col=clg)                                         # you can use as many colours as you want
+plot(b2, col=clg)                                         # you can use as many colors as you want
 
-# changing colour palette again
-clcyan <- colorRampPalette(c("magenta", "cyan", "yellow"))(300) # the number outside the main argument defines how many shades will be shown
+# changing color palette
+clcyan <- colorRampPalette(c("magenta", "cyan4", "yellow"))(3) 
+clcyan <- colorRampPalette(c("magenta", "cyan4", "yellow"))(100) # the number outside the main argument defines how many shades will be shown
 plot(b2, col=clcyan)
 
-
-# changing colour palette yet again
-clch <- colorRampPalette(c("magenta", "cyan", "chartreuse", "yellow"))(300) # the number outside the main argument defines how many shades will be shown
+# changing color palette 
+clch <- colorRampPalette(c("magenta", "cyan4", "cyan", "chartreuse"))(300) # the number outside the main argument defines how many shades will be shown
 plot(b2, col=clch)
 
-# importing additional bands
+
+# Importing additional bands
 # import the green band from Sentinel-2 (band 3) (560 nm)
 b3 <- im.import("sentinel.dolomites.b3.tif")
 plot(b3, col=clch)
@@ -47,18 +57,15 @@ plot(b4, col=clch)
 b8 <- im.import("sentinel.dolomites.b8.tif")
 plot(b8, col=clch)
 
-# creating a multiframe. It works like a matrix (rows and columns), this one woulb be 2x2 matrix
+
+# Creating a multiframe
+# it works like a matrix (rows and columns), this one would be a 2x2 matrix
 
 par(mfrow=c(2,2)) 
 plot(b2, col=clch)
 plot(b3, col=clch)
 plot(b4, col=clch)
 plot(b8, col=clch)
-
-# another way to get the same result but a bit better
-
-stacksent <- c(b2, b3, b4, b8)
-plot(stacksent, col=clch)
 
 # Exercise: plot the four bands in a single raw
 
@@ -68,46 +75,49 @@ plot(b3, col=clch)
 plot(b4, col=clch)
 plot(b8, col=clch)
 
+# Let's make a satellite image
 # overlapping the four bands creating a stack (making of a satellite image)
-# it uses metadata to gice names to the plots using the names of the images
+# it uses metadata to give names to the plots using the names of the images
+# that's a better way than the previous one
 
 stacksent<-c(b2, b3, b4, b8)
 plot(stacksent, col=clch)
 
-dev.off() #deletes the previous device
-plot(stacksent[[4]], col=clch) # I'm using two square parenthesis because stacksent is 2-dimensional object, if it were an array I would have used one set of parenthesis
-
+dev.off() 
+# delete the previous device/results
 
 # RGB plotting
 # stacksent[[1]] = b2 = blue
 # stacksent[[2]] = b3 = green
 # stacksent[[3]] = b4 = red
-# stacksent[[4]] = b8 = NIR       
+# stacksent[[4]] = b8 = NIR
 
-d1<-im.plotRGB(stacksent, r=3, g=2, b=1)
-# im.plotRGB(stacksent, 3, 2, 1)   it's the same as above
+# ES: plot(stacksent[[4]], col=clch) 
+# I'm using two square parenthesis because stacksent is 2-dimensional object, if it were an array I would have used one set of parenthesis
 
-# NIR makes vegetaion easier to visualise so I replace other colours with it
+# im.plotRGB(stacksent, r=3, g=2, b=1)
+im.plotRGB(stacksent, 3, 2, 1) #the same as above
+im.plotRGB(stacksent, 4, 2, 1) 
+# NIR makes vegetation easier to visualize so I replace other colors with it
 
-d2<-im.plotRGB(stacksent, 4, 2, 1)  
-
-# Exercise: make a plot with the natural colour and the false colour images
-
+# Exercise: make a plot with the natural color and the false color images
 par(mfrow=c(1,2))
 im.plotRGB(stacksent, r=3, g=2, b=1)
 im.plotRGB(stacksent, 4, 2, 1)
 
-# for some reason this is what is done in the remote sensing world. If you wanna change a colour you have to shift all other colours as well
+# Other combinations
 par(mfrow=c(1,3))
-im.plotRGB(stacksent, r=3, g=2, b=1)
+im.plotRGB(stacksent, 3, 2, 1)
 im.plotRGB(stacksent, 4, 2, 1)
 im.plotRGB(stacksent, 4, 3, 2)
 
+dev.off()
 # NIR on green
 im.plotRGB(stacksent, 3, 4, 2)
 
-# NIR on blue, this makes soil appear as yeallow
+# NIR on blue, this makes soil appear as yellow
 im.plotRGB(stacksent, 3, 2, 4)
+
 
 # Exercise: put the 4 images all together
 par(mfrow=c(2,2))
@@ -118,3 +128,9 @@ im.plotRGB(stacksent, 3, 2, 4)       # NIR on blue
 
 # correlate variables, it also calculates Pearson's Correlation Index and data frequency
 pairs(stacksent)
+
+
+
+
+
+
