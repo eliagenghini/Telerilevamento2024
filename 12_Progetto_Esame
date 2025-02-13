@@ -1,1 +1,384 @@
+# Progetto Elia Genghini
+# Telerilevamento geoecologico
+# 2024
 
+# OBIETTIVO DEL PROGETTO: Analizzare l'impatto di un tornado in una certa area utilizzando immagini satellitari
+# AREA DI STUDIO: periferia a SW di Winona, Mississippi (USA)                        
+# CONTESTO: Tornado Outbreak 24-27 Marzo 2023, un totale di 35 tornado si abbattono su Texas, Mississippi, Alabama, Tennessee, Georgia.
+#           Questo studio si concentra sul tornado di categoria EF3 del 24 Marzo 2023 (da Black Hawk a Lodi), in particolare sull'impatto
+#           che ha avuto in un'area rurale a SW di Winona
+
+# [1] Confronto immagini true color prima e dopo l'evento
+# [2] Calcolo NDVI prima e dopo il tornado e confronto 
+# [3] Visualizzazione della traccia del tornado
+# [4] Calcolo area danneggiata  
+# [5] Larghezza e lunghezza del tornado
+# [6] Recovery e grafici finali
+                        
+#                                     Caricamento dei package necessari 
+
+# Se non fatto procedere prima con l'installazione usando "install.packages()"
+
+library(terra)                       # per lavorare con dati raster e vettoriali
+library(imageRy)                     # per gestire immagini
+library(raster)                      # per lavorare con dati raster
+library(viridis)                     # creazione di mappe con colori visibili ai daltonici
+library(ggplot2)                     # creazione di grafici
+library(patchwork)                   # composizione di più grafici in un'unica visualizzazione
+
+
+#                                [1] Confronto immagini true color prima e dopo l'evento 
+
+# Impostare la working directory
+setwd("C:/Users/elige/Desktop/ELIA/Magistrale/TELERILEVAMENTIO/esame/EXAM PICS/")  # "setwd()" serve per impostare la working directory
+getwd()                                                                            # "getwd()" serve per visualizzare la working directory su cui lavora
+
+# Visualizzare i dati contenuti nella working directory utilizzati nel progetto
+list_project <- list.files(path = "C:/Users/elige/Desktop/ELIA/Magistrale/TELERILEVAMENTIO/esame/EXAM PICS", full.names = FALSE)
+print(list_project)
+
+# Importare due immagini true color pre (19/02/2023) e post (26/03/2023) evento 
+pre_tornado <- rast("pre_tornado_20230219.jpg")
+post_tornado <- rast("post_tornado_20230326.jpg")
+
+# Creo un multiframe per visualizzarle entrambe
+pre_post_tornado <- par(mfrow=c(1,2))
+plot(pre_tornado, main="19 Febbraio 2023")
+plot(post_tornado, main="26 Marzo 2023")
+
+dev.off()                               # alleggerire per proseguire
+
+
+#                                   [2] Calcolo NDVI pre e post tornado e confronto
+
+# Importare le bande (Sentinel - 2)
+# Prima del tornado: 19 Febbraio
+b2_pre <- rast("b2_pre.tiff")              # b2 = blue  (450 - 495  nm)
+b3_pre <- rast("b3_pre.tiff")              # b3 = green (495 - 570  nm)
+b4_pre <- rast("b4_pre.tiff")              # b4 = red   (620 - 750  nm)
+b8_pre <- rast("b8_pre.tiff")              # b8 = nir   (750 - 1000 nm)
+
+# Dopo il tornado: 26 Marzo  
+b2_post <- rast("b2_post.tiff")            # b2 = blue  (450 - 495  nm)
+b3_post <- rast("b3_post.tiff")            # b3 = green (495 - 570  nm)
+b4_post <- rast("b4_post.tiff")            # b4 = red   (620 - 750  nm)
+b8_post <- rast("b8_post.tiff")            # b8 = nir   (750 - 1000 nm)
+
+# NDVI (Normalized Difference Vegetation Index) = (NIR - RED)/(NIR + RED)
+# NDVI alti indicano vegetazione sana
+# NDVI bassi indicano un suolo nudo con vegetazione scarsa o assente
+
+# Costruzione di una funzione che mi calcoli l'NDVI da utilizzare in seguito
+ndvi <- function(nir, red) {               # "function" serve per impostare gli elementi che servono nella funzione (nir, red)
+  ndvi_output <- ((nir-red)/(nir+red))     #  scrivere la formula
+  return(ndvi_output)                      # "return" da l'output di uscita 
+}
+
+# Calcolare NDVI prima e dopo il tornado  
+ndvi_pre <- ndvi(b8_pre, b4_pre)           # NDVI pre tornado (19/02/2023)
+ndvi_post <- ndvi(b8_post, b4_post)        # NDVI post tornado (26/03/2023)
+
+# Confronto le due immagini
+conf_ndvi_pre_post_tornado <- par(mfrow=c(1,2))              # divide la finestra grafica in 1 riga e 2 colonne    
+plot(ndvi_pre, col=viridis(100), main= "NDVI 19/02/2023")
+plot(ndvi_post, col=viridis(100), main= "NDVI 26/03/2023")
+
+dev.off()                                  # alleggerire per proseguire
+
+# Calcolo della differenza tra l'NDVI prima e dopo il tornado
+# Questo può aiutare ad identificare le aree in cui è avvenuta una diminuzione significativa della vegetazione in seguito al passaggio del tornado
+# La differenza di NDVI è quindi un buon indicatore del danno
+ndvi_diff <- ndvi_pre - ndvi_post
+plot(ndvi_diff, col=viridis(100), main="differenza NDVI") 
+
+# Si può ora identificare la traccia del tornado (orientata SW-NE)
+# Definizione di una soglia (per il valore ndvi_diff) per individuare solo le aree danneggiate
+# Soglia impostata osservando l'immagine
+damaged_zones <- ndvi_diff > 0.2                                            
+plot(damaged_zones, col=viridis(100), main="Aree con ndvi_diff > 0.2")
+
+
+#                                     [3] Visualizzazione della traccia del tornado
+
+# Problema: nonostante la soglia, ndvi_diff simile in aree al di fuori della traccia
+# Si prosegue estrapolando la traccia in modo da visualizzare solo le aree danneggiate
+
+# Creazione di un poligono per identificare la traccia del tornado 
+coords <- matrix(c(      # definizione coordinate: 
+  -89.97614, 33.34500,     # angolo inferiore sinistro
+  -89.97614, 33.35500,     # angolo superiore sinistro
+  -89.78971, 33.43300,     # angolo superiore destro
+  -89.78971, 33.42300,     # angolo inferiore destro
+  -89.97614, 33.34500      # chiudere il poligono (punto iniziale)
+), ncol=2, byrow=TRUE)
+
+# Creazione del poligono
+tornado_pol <- vect(coords, type="polygon")
+
+# Plottare il poligono sul raster tornado_track 
+plot(damaged_zones, col=col, main="Aree con ndvi_diff > 0.2")
+plot(tornado_pol, add=TRUE, border="red")            # add=TRUE permette di plottare il plot su quello precedente
+
+# Applicare una maschera al raster per visualizzare la traccia del tornado
+# "mask()" => funzione usata per mascherare i valori di un raster (damaged_zones) in base a un altro oggetto (tornado_pol)
+# I valori che NON si vogliono tenere sono definiti NA (not available)
+damaged_zones_mask <- mask(damaged_zones, tornado_pol)
+plot(damaged_zones_mask, col=col, main="Aree con ndvi_diff > 0.2")
+
+# Salvare il nuovo raster mascherato sulla working directory
+writeRaster(damaged_zones_mask, "traccia_tornado.tiff", overwrite=TRUE)
+
+dev.off() # Alleggerire un po' il programma
+
+
+#                                          [4] Calcolo area danneggiata  
+
+# Ora si prosegue utilizzando il raster mascherato
+res <- rast("traccia_tornado.tiff")                 # richiamare il raster appena salvato
+
+# Calcolo del numero di celle per ogni classe (freq)                #          layer        value     count
+freq_values <- freq(res)                                            # 1            1            0    248809
+freq_values                                                         # 2            1            1     30908
+
+# Estrazione della freq celle con valore 1 (aree danneggiate)
+damaged_cells <- subset(freq_values, value == 1)                    #          layer        value     count
+damaged_cells                                                       # 2            1            1     30908
+
+# Estrazione della freq celle con valore 0 (aree non danneggiate)
+non_damaged_cells <- subset(freq_values, value == 0)                #          layer        value     count
+non_damaged_cells                                                   # 2            1            0    248809  
+
+# Numero totale celle del poligono
+tot_cells_pol <- damaged_cells + non_damaged_cells
+tot_cells_pol                                                       # 2            2            1    279717
+
+# Calcolo dell'area della singola cella
+cell_area <- (10)^2                                 # risoluzione Sentinel-2 per bande di interesse = 10m
+
+# Calcolo estensione area danneggiata
+total_damage <- damaged_cells * cell_area                           #          layer        value     count
+total_damage_kmq <- total_damage/1000000                            # 2        1e-04        1e-04    3.0908 (kmq)                        
+total_damage_kmq
+
+# Area totale del raster (considerando anche le celle NA)
+tot_cells <- ncell(result)                                         
+tot_cells                                                           # 2755600
+tot_area  <- (tot_cells * cell_area)/1000000
+tot_area                                                            # 275.56 kmq
+
+# Proporzioni e percentuali (calcolate rispetto all'area del poligono)
+prop_damage0 <- damaged_cells/tot_cells_pol
+perc_damage0 <- prop_damage0*100                                    #   layer value    count
+perc_damage0                                                        # 2    50   100 11.04974 (% area danneggiata)
+perc_non_damage0 <- 100 - perc_damage0                            
+perc_non_damage0                                                    # 2    50     0 88.95026                                                        
+
+# Proporzioni e percentuali (calcolate rispetto all'area totale)
+prop_damage1 <- damaged_cells/tot_cells  
+perc_damage1 <- prop_damage1*100                                                                                                                   
+perc_damage1                                                        #            layer        value     count
+perc_non_damage1 <- 100 - perc_damage1                              # 2   3.628974e-05 3.628974e-05  1.121643 (% area danneggiata)
+perc_non_damage1                                                    # 2       99.99996     99.99996  98.87836                                                          
+
+
+#                                      [5] Larghezza e lunghezza del tornado
+
+# Visualizzare la traccia 
+mask_1 <- damaged_zones_mask == 1         # creazione di una maschera che seleziona solo i valori == 1
+
+# Applicare la maschera direttamente al raster (lascia solo 1, il resto diventa NA)
+tornado_track <- damaged_zones_mask
+tornado_track[!mask_1] <- NA              # imposta NA a tutte le celle che non sono 1
+
+# Visualizzare solo le celle con valore 1 (aree danneggiate)
+plot(tornado_track, col="darkblue", main="Celle con valore 1 (Aree danneggiate)")
+
+# Cambio del sistema di coordinate da WGS (espresse in gradi) a UTM (espresse in metri) 
+# Questo di fa per fare calcoli espressi in metri
+
+# Per il raster (tornado_track):
+crs(tornado_track)                        # controllo della proiezione attuale (lat/lon, gradi) => WGS 84 (EPSG 4326)
+
+# Definisco il crs di destinazione                                  
+new_crs <- "EPSG:32616"                   # UTM 16N (EPSG 32616)
+
+# Cambio la proiezione a UTM
+tornado_track_utm <- project(tornado_track, new_crs)  
+plot(tornado_track_utm)                   # ora le coordinate sono espresse in metri
+
+# Per il poligono (tornado_pol): 
+crs(tornado_pol) <- "EPSG:4326"           # con questa operazione al poligono vengono attribuite coordinate WGS
+tornado_pol_utm <- project(tornado_pol, new_crs)
+
+# Plottare il poligono sul raster (tornado_track_utm) in coordinate UTM
+plot(tornado_track_utm, col="darkblue", main = "Celle con valore 1 (Aree danneggiate)")
+plot(tornado_pol_utm, add = TRUE, border = "red")
+
+# Lunghezza del tornado 
+point_1 <- c(3694000, 222983)            # (lat, long)
+point_2 <- c(3702000, 240639.5)          # (lat, long)               # Definizione dei due punti di cui voglio calcolare la distanza
+
+# Creare un oggetto 'SpatVector' con le coordinate
+points <- vect(rbind(point_1, point_2), crs = "EPSG:32616")
+
+# Calcolare la distanza tra i due punti (in metri)
+track_length <- distance(points)
+print(track_length)                                                 # 19384.32 m (19.38 km)
+
+# Larghezza del tornado 
+track_area <- expanse(tornado_pol_utm)   # "expase()" calcola area poligono in mq
+print(track_area)                                                   # 19238284 mq (19.238 kmq)
+track_width <- track_area/track_length   # Calcolo larghezza
+print(track_width)                                                  # 992.4661 m 
+
+# Tabella riassuntiva (dataframe) con i valori ricavati
+# Creazione di un dataframe
+df <- data.frame(                     # ogni elemento di "data.frame" rappresenta una colonna della tabella
+  Danno_tot_kmq  = c(3.09),    
+  Area_tot_kmq = c(275.56),
+  Perc_damage0 = c(11.05),
+  Perc_damage1 = c(1.12),
+  Track_length_km = c(19.38),
+  Track_width_m = c(992.46)
+)
+print(df)                             # visualizzare la tabella
+
+# Danno_tot_kmq Area_tot_kmq Perc_damage0 Perc_damage1 Track_length_km Track_width_m
+# 1        3.09       275.56        11.05         1.12           19.38        992.46
+
+
+#                                         [6] Recovery e grafici finali
+
+# Studiare la ripresa dell'area nei mesi successivi 
+# Importare le bande relative:
+
+# Un mese dopo: 30/04/2023
+b4_1 <- rast("B4_1.tiff")          # b4 = red   (620 - 750  nm)
+b8_1 <- rast("B8_1.tiff")          # b8 = nir   (750 - 1000 nm)
+
+# Tre mesi dopo: 24/06/2023
+b4_2 <- rast("B4_2.tiff")          # b4 = red   (620 - 750  nm)
+b8_2 <- rast("B8_2.tiff")          # b8 = nir   (750 - 1000 nm)
+
+# Calcolo NDVI
+ndvi_1 <- ndvi(b8_1, b4_1)         # NDVI 30/04/2023
+ndvi_2 <- ndvi(b8_2, b4_2)         # NDVI 24/06/2023
+
+# Differenza NDVI rispetto a prima del tornado
+ndvi_diff1 <- ndvi_pre - ndvi_1                                       
+ndvi_diff2 <- ndvi_pre - ndvi_2
+
+# Impostare le soglie
+damaged_zones1 <- ndvi_diff1 > 0.2                                            
+plot(damaged_zones1, col=col, main = "Aree con ndvi_diff > 0.2")
+damaged_zones2 <- ndvi_diff2 > 0.2 
+plot(damaged_zones2, col=col, main = "Aree con ndvi_diff > 0.2")
+
+# Plottare insieme per confronti
+pre_post_tornado <- par(mfrow=c(3,1))
+
+# Primo plot
+plot(damaged_zones, main ="26 Marzo 2023")      # subito dopo il tornado
+plot(tornado_pol, add = TRUE, border = "red")
+# Secondo plot
+plot(damaged_zones1, main ="30 Aprile 2023")    # 1 mese dopo
+plot(tornado_pol, add = TRUE, border = "red")
+# Terzo plot
+plot(damaged_zones2, main ="24 Giugno 2023")    # 3 mesi dopo
+plot(tornado_pol, add = TRUE, border = "red")
+
+dev.off()
+
+# Calcolo frequenze e percentuali
+
+# 30 APRILE 2023
+# Creare una maschera per ritagliare l'area di interesse su cui proseguo con i calcoli
+tornado_tr1<- mask(damaged_zones1, tornado_pol)
+plot(tornado_tr1)                                                   
+
+# Calcolo del numero di celle per ogni classe (freq)              
+freq_values1 <- freq(tornado_tr1) 
+
+# Estrazione della freq celle con valore 1 (aree danneggiate)
+damaged_cells1 <- subset(freq_values1, value == 1)                   
+
+# Calcolo numero totale celle del poligono (già definito in precedenza)
+tot_cells_pol
+
+# Proporzioni e percentuali (calcolate rispetto all'area della traccia)
+prop_dam1 <- damaged_cells1/tot_cells_pol 
+perc_dam1 <- prop_dam1*100                               #   layer value    count
+perc_dam1                                                # 2    50   100 3.879635 
+perc_non_dam1 <- 100 - perc_dam1                              
+perc_non_dam1                                            # 2    50     0 96.12036
+
+# 24 GIUGNO 2023
+# Creare una maschera per ritagliare l'area di interesse su cui proseguo con i calcoli
+tornado_tr2<- mask(damaged_zones2, tornado_pol)
+plot(tornado_tr2)                                                   
+
+# Calcolo del numero di celle per ogni classe (freq)              
+freq_values2 <- freq(tornado_tr2) 
+
+# Estrazione della freq celle con valore 1 (aree danneggiate)
+damaged_cells2 <- subset(freq_values2, value == 1)                   
+
+# Calcolo numero totale celle del poligono (già definito in precedenza)
+tot_cells_pol
+
+# Proporzioni e percentuali (calcolate rispetto all'area della traccia)
+prop_dam2 <- damaged_cells2/tot_cells_pol 
+perc_dam2 <- prop_dam2*100                            #   layer value    count
+perc_dam2                                             # 2    50   100 5.093362
+perc_non_dam2 <- 100 - perc_dam2                              
+perc_non_dam2                                         # 2    50     0 94.90664
+
+# Creare tabelle riassuntive
+
+# Analisi dei dati di recovery nei mesi successivi
+# Con tutti i valori ricavati, costruire un dataframe (tabella) con le 2 classi e i rispettivi valori 
+# Le percentuali sono rispetto all'area del poligono che definisce la traccia
+
+Classi <- c("% danneggiata ", "% non danneggiata")    # Creazione dei titoli (un vettore) usando le virgolette
+p_march <- c(11.05, 88.95 )                           # Vettore percentuali Marzo 
+p_april <- c(3.87, 96.12)                             # Vettore percentuali Aprile
+p_june  <- c(5.09, 94.9)                              # Vettore percentuali Giugno
+
+# Costruire la tabella usando la funzione "data.frame()"
+tab <- data.frame(Classi, p_march, p_april, p_june)         # 4 colonne: "class", "p_march", "p_april", "p_june"
+tab                                                         # Mostrare la tabella
+
+# Costruire i grafici
+# Utilizzo libreria "ggplot2()" per creare un grafico a barre
+
+# "aes()" specifica caratteristiche visive del grafico: 
+# x=class       => specifica la variabile sull’asse x.
+# y=p_pre_fire  => specifica la variabile sull'asse Y 
+# color=class   => impostare colore delle barre in base alla variabile "class" e assegna un colore diverso a ogni categoria
+
+# geom_bar(stat="identity")   => stat="identity": altezze barre specificate dai dati
+# geom_bar(fill="white")      => colore riempimento barre
+
+# Creare grafico per Marzo
+p1 <- ggplot(tab, aes(x=Classi, y=p_march, color=Classi)) + 
+  geom_bar(stat="identity", fill="white") +
+  labs(title="Situazione Marzo")
+p1
+
+# Creare grafico per Aprile
+p2 <- ggplot(tab, aes(x=Classi, y=p_april, color=Classi)) + 
+  geom_bar(stat="identity", fill="white") +
+  labs(title="Situazione Aprile")
+p2
+
+# Creare grafico per Giugno
+p3 <- ggplot(tab, aes(x=Classi, y=p_june, color=Classi)) + 
+  geom_bar(stat="identity", fill="white") +
+  labs(title="Situazione Giugno")
+p3
+
+# Plottare tutti e tre i grafici 
+# Utilizzo libreria "patchwork()"
+p1+p2+p3
+
+# FINE
