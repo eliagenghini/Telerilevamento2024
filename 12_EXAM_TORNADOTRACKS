@@ -8,6 +8,7 @@
 #           Questo studio si concentra sul tornado di categoria EF3 del 24 Marzo 2023 (da Black Hawk a Lodi), in particolare sull'impatto
 #           che ha avuto in un'area rurale a SW di Winona
 
+# PROCEDIMENTO
 # [1] Confronto immagini true color prima e dopo l'evento
 # [2] Calcolo NDVI prima e dopo il tornado e confronto 
 # [3] Visualizzazione della traccia del tornado
