@@ -1,0 +1,45 @@
+
+# Metodo alternativo (alla fine non utilizzato nel progetto dell'esame) per escludere dal danno aree con NDVI simile
+# A meno che non si sappiano con esattezza le coordinate delle aree da escludere può essere molto macchinoso 
+# Troppo approssimativo 
+
+                                      Correzione per le aree agricole con ndvi_diff simile (approssimativa)
+
+# Nonostante l'impostazione di una soglia non è possibile estrarre solo la traccia del tornado (e quindi l'area danneggiata)
+# Questo a causa della somiglianza tra diff_ndvi della traccia e diff_ndvi di altre aree (campi arati)
+# Si è scelto di procedere mascherando queste aree (le più grandi) con dei poligoni, poi mascherati dal raster
+
+# Definizione delle coordinate (long e lat) delle aree da escludere (da Copernicus Browser)
+coords_1 <- matrix(c(
+  -89.94490, 33.33873,           # angolo inferiore sinistro
+  -89.94490, 33.34346,           # angolo superiore sinistro
+  -89.93580, 33.34346,           # angolo superiore destro
+  -89.93580, 33.33873            # angolo inferiore destro
+), ncol = 2, byrow = TRUE)
+
+coords_2 <- matrix(c(
+  -89.87692, 33.33730,           # angolo inferiore sinistro
+  -89.87692, 33.35980,           # angolo superiore sinistro
+  -89.85168, 33.35980,           # angolo superiore destro
+  -89.85168, 33.33730            # angolo inferiore destro
+), ncol = 2, byrow = TRUE)
+
+# Creare i poligoni
+pol_1 <- vect(coords_1, type = "polygon")                                      # poligono 1
+pol_2 <- vect(coords_2, type = "polygon")                                      # poligono 2
+
+# Creare un oggetto contenente i due poligoni (poligono agricolo)
+pol_agr <- union(pol_1, pol_2)                                                 # utilizzo di "union" perchè "c" non funzionava
+
+# Plottare il poligono agricolo sul raster (damaged_zones)
+plot(damaged_zones, col=col, main = "Aree con ndvi_diff > 0.2")
+plot(pol_agr, add=TRUE, border="red")                                          # "add = TRUE" permette di plottare pol_agr su damaged_zones_mask 
+
+# Mascherare le zone definite dai poligoni sul raster (damaged_zones)
+# "mask" è una funzione che permette di considerare solo determinati valori in un raster, definendo quelli che NON si vogliono tenere in considerazione come NA (not available)
+damaged_zones_mask <- mask(damaged_zones, pol_agr, inverse = TRUE)             # "inverse = TRUE" maschera le aree all'interno di pol_agr
+plot(damaged_zones_mask, col=col)
+# Salvare il raster con aree mascherate sulla working directory
+writeRaster(damaged_zones_mask, "area_danneggiata1.tiff", overwrite=TRUE)
+
+# fine
