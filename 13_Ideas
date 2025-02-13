@@ -3,7 +3,7 @@
 # A meno che non si sappiano con esattezza le coordinate delle aree da escludere può essere molto macchinoso 
 # Troppo approssimativo 
 
-                                      Correzione per le aree agricole con ndvi_diff simile (approssimativa)
+                                     [3B] Correzione per le aree agricole con ndvi_diff simile (approssimativa)
 
 # Nonostante l'impostazione di una soglia non è possibile estrarre solo la traccia del tornado (e quindi l'area danneggiata)
 # Questo a causa della somiglianza tra diff_ndvi della traccia e diff_ndvi di altre aree (campi arati)
