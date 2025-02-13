@@ -215,22 +215,24 @@ tornado_pol_utm <- project(tornado_pol, new_crs)
 plot(tornado_track_utm, col="darkblue", main = "Celle con valore 1 (Aree danneggiate)")
 plot(tornado_pol_utm, add = TRUE, border = "red")
 
-# Lunghezza del tornado 
-point_1 <- c(3694000, 222983)            # (lat, long)
-point_2 <- c(3702000, 240639.5)          # (lat, long)               # Definizione dei due punti di cui voglio calcolare la distanza
+# Lunghezza del tornado
+# Coordinate UTM dei due punti (in metri)
+x1 <- 223018.8
+y1 <- 3694000
+x2 <- 240636.7
+y2 <- 3702000
 
-# Creare un oggetto 'SpatVector' con le coordinate
-points <- vect(rbind(point_1, point_2), crs = "EPSG:32616")
+# Calcolo della distanza euclidea
+track_length <- sqrt((x2 - x1)^2 + (y2 - y1)^2)
+print(track_length)  # risultato in m    # 19349.17 (19.349 km)
 
-# Calcolare la distanza tra i due punti (in metri)
-track_length <- distance(points)
-print(track_length)                                                 # 19384.32 m (19.38 km)
+# Area della traccia (già definita prima)
+track_area <- tot_cells_pol * cell_area 
+track_area           # risultato in m    # 27971700 (27.972 kmq)
 
 # Larghezza del tornado 
-track_area <- expanse(tornado_pol_utm)   # "expase()" calcola area poligono in mq
-print(track_area)                                                   # 19238284 mq (19.238 kmq)
-track_width <- track_area/track_length   # Calcolo larghezza
-print(track_width)                                                  # 992.4661 m 
+track_width <- track_area/track_length
+print(track_width)   # risultato in m    # 1445.628 
 
 # Tabella riassuntiva (dataframe) con i valori ricavati
 # Creazione di un dataframe
@@ -239,14 +241,13 @@ df <- data.frame(                     # ogni elemento di "data.frame" rappresent
   Area_tot_kmq = c(275.56),
   Perc_damage0 = c(11.05),
   Perc_damage1 = c(1.12),
-  Track_length_km = c(19.38),
-  Track_width_m = c(992.46)
+  Track_length_km = c(19.35),
+  Track_width_m = c(1445.628)
 )
 print(df)                             # visualizzare la tabella
 
 # Danno_tot_kmq Area_tot_kmq Perc_damage0 Perc_damage1 Track_length_km Track_width_m
-# 1        3.09       275.56        11.05         1.12           19.38        992.46
-
+# 1        3.09       275.56        11.05         1.12           19.35      1445.628
 
 #                                         [6] Recovery e grafici finali
 
