@@ -354,9 +354,9 @@ tab                                                         # Mostrare la tabell
 # Utilizzo libreria "ggplot2()" per creare un grafico a barre
 
 # "aes()" specifica caratteristiche visive del grafico: 
-# x=class       => specifica la variabile sull’asse x.
-# y=p_pre_fire  => specifica la variabile sull'asse Y 
-# color=class   => impostare colore delle barre in base alla variabile "class" e assegna un colore diverso a ogni categoria
+# x=Classi       => specifica la variabile sull’asse x.
+# y=p_march      => specifica la variabile sull'asse Y 
+# color=Classi   => impostare colore delle barre in base alla variabile "Classi" e assegna un colore diverso a ogni categoria
 
 # geom_bar(stat="identity")   => stat="identity": altezze barre specificate dai dati
 # geom_bar(fill="white")      => colore riempimento barre
